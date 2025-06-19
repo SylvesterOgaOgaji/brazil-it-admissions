@@ -13,7 +13,7 @@
     <!-- Application Structure Plan: A dashboard-centric, single-page application designed for task-oriented exploration. The structure prioritizes immediate access to actionable information for prospective students.
         1. Header & Navigation: A sticky header with the application title and navigation buttons that smoothly scroll to the relevant sections.
         2. Overview Dashboard: A high-level view with key metrics (total vacancies, open editais) and a primary chart showing the distribution of admission routes. This gives users an instant summary of the landscape described in the report, and now includes a dynamic admissions tip generator.
-        3. Interactive Opportunities Hub: A filterable list of all institutions mentioned in the report. Users can filter by 'Open', 'Closed', or 'Special' status. This is the core interactive component, allowing users to drill down into the specific data. Clicking an item reveals detailed information and a link to the official source. Course names within cards are clickable to generate AI-powered descriptions.
+        3. Interactive Opportunities Hub: A filterable list of all institutions mentioned in the report. Users can filter by 'Open', 'Closed', or 'Special' status. This is the core interactive component, allowing users to drill down into the specific data. Clicking an item reveals detailed information and a link to the official source.
         4. Admission Pathways Explained: A section using styled cards to clearly explain the main routes (Vestibular, SISU, Transfer), providing essential context for users unfamiliar with the Brazilian system.
         This structure was chosen to empower users to quickly find relevant, open opportunities and understand the context around them, transforming the dense report into an actionable tool. -->
     <!-- Visualization & Content Choices:
@@ -21,8 +21,7 @@
         - Report Info: List of all universities and their current application status. Goal: Organize & Compare. Viz/Method: Interactive Card Grid (HTML/CSS + JS). Interaction: Click to filter by status, view details within the card. Justification: Provides a powerful, user-driven way to explore the core dataset of the report, far more effective than a static table.
         - Report Info: General application steps. Goal: Organize. Viz/Method: Flowchart Diagram (HTML/CSS with Tailwind). Interaction: Static visual guide. Justification: Simplifies the complex process mentioned in the report into digestible, visual steps, adhering to the NO SVG/Mermaid constraint.
         - Report Info: Vacancies per course at specific institutions (e.g., UNICAP). Goal: Inform. Viz/Method: Key-value text within the interactive cards. Justification: Directly presents the numbers without cluttering the UI with unnecessary charts for simple data points.
-        - NEW FEATURE (LLM): Course Description Generator. Report Info: Course names within opportunities. Goal: Inform & Engage. Viz/Method: Textual Description (LLM-generated) displayed inline upon click. Interaction: Click on course name to trigger LLM call and show/hide description. Justification: Adds deeper, on-demand context for courses without cluttering the initial view.
-        - NEW FEATURE (LLM): Dynamic Admissions Tip. Report Info: General admissions advice. Goal: Inform & Engage. Viz/Method: Textual Tip (LLM-generated) displayed upon button click. Interaction: Click button to get a new tip. Justification: Provides quick, personalized insights or reminders, enhancing user engagement.
+        - NEW FEATURE: Dynamic Admissions Tip. Report Info: General admissions advice. Goal: Inform & Engage. Viz/Method: Textual Tip (randomly selected from list) displayed upon button click. Interaction: Click button to get a new tip. Justification: Provides quick, practical insights or reminders, enhancing user engagement.
         CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
     <style>
         body { font-family: 'Inter', sans-serif; }
@@ -67,14 +66,6 @@
                 bottom: -28px;
                 transform: translateX(50%);
             }
-        }
-        .course-link {
-            cursor: pointer;
-            text-decoration: underline;
-            color: #3B82F6; /* Use a distinct accent color for clickable course links */
-        }
-        .course-link:hover {
-            color: #2563EB; /* Darker shade on hover */
         }
     </style>
 </head>
@@ -121,7 +112,7 @@
             </div>
 
             <div class="bg-white p-6 rounded-lg shadow-md mt-10 text-center">
-                <h3 class="text-xl font-bold text-slate-900 mb-4">✨ Get an Admissions Tip!</h3>
+                <h3 class="text-xl font-bold text-slate-900 mb-4">Get an Admissions Tip!</h3>
                 <button id="get-tip-btn" class="bg-blue-500 text-white px-6 py-2 rounded-full font-semibold hover:bg-blue-600 transition-colors">
                     Generate Tip
                 </button>
@@ -133,7 +124,7 @@
 
         <section id="opportunities" class="mb-16">
             <h2 class="text-3xl font-bold text-slate-900 mb-4 text-center">Interactive Opportunity Explorer</h2>
-            <p class="text-center text-slate-600 max-w-3xl mx-auto mb-8">Filter institutions to find editais matching your interest. Status is based on the latest available information from the report. Click a card for more details. ✨ Click course names for AI-generated descriptions!</p>
+            <p class="text-center text-slate-600 max-w-3xl mx-auto mb-8">Filter institutions to find editais matching your interest. Status is based on the latest available information from the report. Click a card for more details.</p>
             <div class="flex justify-center flex-wrap gap-2 mb-8" id="filter-container">
                 <button data-filter="all" class="filter-btn bg-slate-800 text-white px-4 py-2 rounded-full font-semibold">All</button>
                 <button data-filter="open" class="filter-btn bg-white text-slate-700 px-4 py-2 rounded-full font-semibold border border-slate-300">Open</button>
@@ -141,6 +132,7 @@
                 <button data-filter="special" class="filter-btn bg-white text-slate-700 px-4 py-2 rounded-full font-semibold border border-slate-300">Special Cases</button>
             </div>
             <div id="opportunities-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Opportunity cards will be injected here by JavaScript -->
             </div>
         </section>
 
@@ -163,7 +155,7 @@
             </div>
         </section>
         
-        <section id="process">
+        <section id="process" class="mb-16">
             <h2 class="text-3xl font-bold text-slate-900 mb-6 text-center">General Application Process</h2>
              <p class="text-center text-slate-600 max-w-3xl mx-auto mb-8">While each institution has its own specific steps, the general application journey follows this flow. Always refer to the official edital for precise instructions.</p>
             <div class="grid grid-cols-1 md:grid-cols-5 gap-y-8 md:gap-x-12">
@@ -185,139 +177,72 @@
     </footer>
 
     <script>
-        const FONT_COLOR = '#334155';
-        const GRID_COLOR = '#E2E8F0';
-        const PALETTE = {
-            primary: '#3B82F6', 
-            secondary: '#64748B', 
-            accent1: '#94A3B8',
-        };
-
-        const opportunitiesData = [
-            {
-                id: 'unicap',
-                name: 'UNICAP',
-                status: 'open',
-                title: 'Vestibular 2025.2',
-                dates: 'Registrations: June 17 - July 7, 2025',
-                summary: 'Offers new bachelor\'s degrees in Computer Science and Artificial Intelligence, plus a technologist course in Database (AI & Data Science).',
-                link: 'https://lp.portal.unicap.br/vest_unicap',
-                courses: ['Computer Science', 'Artificial Intelligence', 'Database (AI & Data Science)']
-            },
-            {
-                id: 'ifpi',
-                name: 'IFPI',
-                status: 'open',
-                title: 'Exame Classificatório 2025.2',
-                dates: 'Registrations: June 16 - July 7, 2025',
-                summary: 'Offers 1,025 vacancies for free technical courses. Registrations were temporarily suspended; monitor the official website for reopening.',
-                link: 'https://www.ifpi.edu.br/',
-                courses: ['Informatics', 'Systems Analysis and Development (confirm in edital)']
-            },
-            {
-                id: 'ufrrj',
-                name: 'UFRRJ',
-                status: 'special',
-                title: 'Residual Vacancies 2025.2',
-                dates: 'Registrations: June 27 - July 4, 2025',
-                summary: 'Process for re-entry and transfers. The edital indicates no vacancies for Information Systems or Computer Science in this call.',
-                link: 'https://portal.ufrrj.br/reingresso-e-transferencias-2025-2-processo-seletivo-para-vagas-residuais-da-graduacao/',
-                courses: ['Information Systems (No Vacancies)', 'Computer Science (No Vacancies)']
-            },
-            {
-                id: 'faeterj',
-                name: 'Faeterj Petrópolis',
-                status: 'closed',
-                title: 'Vestibular 2025.2',
-                dates: 'Registrations closed on June 8, 2025',
-                summary: 'Offered vacancies for the Technologist in IT and Communication course. The application period has ended.',
-                link: '#',
-                courses: ['Technology in Information and Communication']
-            },
-            {
-                id: 'ufgd',
-                name: 'UFGD',
-                status: 'closed',
-                title: 'Transfer/Diploma Holder Vacancies',
-                dates: 'Registrations closed on May 16, 2025',
-                summary: 'Selective process to fill idle vacancies. The application period has finished, with results imminent.',
-                link: '#',
-                courses: ['Not specified']
-            },
-            {
-                id: 'ufape',
-                name: 'UFAPE',
-                status: 'special',
-                title: 'Extra SISU Edital 2025.2',
-                dates: 'Announced on June 13, 2025',
-                summary: 'A supplemental SISU edital was announced, but specific details on courses and deadlines were not available. Requires constant monitoring of the official site.',
-                link: '#',
-                courses: ['Not specified']
-            }
-        ];
-
-        // Store generated descriptions to avoid re-calling LLM for the same course
-        const generatedCourseDescriptions = {};
-        const generatedAdmissionsTips = []; // Store generated tips
-
-        async function generateCourseDescription(courseName, displayElement) {
-            const courseKey = `${courseName}`; // Use courseName as key for caching
-            if (generatedCourseDescriptions[courseKey]) {
-                displayElement.innerHTML = `<p class="text-sm mt-2 p-2 bg-slate-100 rounded-md border border-slate-200">${generatedCourseDescriptions[courseKey]}</p>`;
-                return;
-            }
-
-            displayElement.innerHTML = '<span class="text-sm text-slate-500">Generating description... ✨</span>';
-
-            const prompt = `Generate a concise description (approx. 3-4 sentences) of the '${courseName}' course in the context of higher education and the IT job market in Brazil. Include what is studied and potential areas of professional activity.`;
-            let chatHistory = [];
-            chatHistory.push({ role: "user", parts: [{ text: prompt }] });
-            const payload = { contents: chatHistory };
-            const apiKey = ""; // Canvas will provide this at runtime
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-
-            try {
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                const result = await response.json();
-                if (result.candidates && result.candidates.length > 0 &&
-                    result.candidates[0].content && result.candidates[0].content.parts &&
-                    result.candidates[0].content.parts.length > 0) {
-                    const text = result.candidates[0].content.parts[0].text;
-                    generatedCourseDescriptions[courseKey] = text; // Cache the result
-                    displayElement.innerHTML = `<p class="text-sm mt-2 p-2 bg-slate-100 rounded-md border border-slate-200">${text}</p>`;
-                } else {
-                    displayElement.innerHTML = '<p class="text-sm text-red-500 mt-2">Could not generate description. (Unexpected structure)</p>';
-                }
-            } catch (error) {
-                console.error("Error calling Gemini API for course description:", error);
-                displayElement.innerHTML = '<p class="text-sm text-red-500 mt-2">Error connecting to AI service. Please try again later.</p>';
-            }
-        }
-
-        async function generateApplicationTip() {
-    const tipDisplayElement = document.getElementById('admissions-tip-display');
-    tipDisplayElement.innerHTML = '<span class="text-slate-500">Generating tip... ✨</span>';
-
-    try {
-        const response = await fetch('https://gemini-proxy.yourusername.repl.co/generate-tip', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                prompt: "Generate a short, actionable tip (1-2 sentences) for a student applying to IT or Computer Science undergraduate programs in Brazil for the 2nd semester of 2025."
-            })
-        });
-        const data = await response.json();
-        tipDisplayElement.innerHTML = `<p class="text-slate-700 italic">${data.tip}</p>`;
-    } catch (error) {
-        console.error("Error fetching tip:", error);
-        tipDisplayElement.innerHTML = '<p class="text-red-500">Error connecting to backend. Try again later.</p>';
-    }
-}
         document.addEventListener('DOMContentLoaded', () => {
+            const FONT_COLOR = '#334155';
+            const GRID_COLOR = '#E2E8F0';
+            const PALETTE = {
+                primary: '#3B82F6', 
+                secondary: '#64748B', 
+                accent1: '#94A3B8',
+            };
+
+            const opportunitiesData = [
+                {
+                    name: 'UNICAP',
+                    status: 'open',
+                    title: 'Vestibular 2025.2',
+                    dates: 'Registrations: June 17 - July 7, 2025',
+                    summary: 'Offers new bachelor\'s degrees in Computer Science and Artificial Intelligence, plus a technologist course in Database (AI & Data Science).',
+                    link: 'https://lp.portal.unicap.br/vest_unicap',
+                    courses: 'Computer Science, Artificial Intelligence, Database (AI & Data Science)'
+                },
+                {
+                    name: 'IFPI',
+                    status: 'open',
+                    title: 'Exame Classificatório 2025.2',
+                    dates: 'Registrations: June 16 - July 7, 2025',
+                    summary: 'Offers 1,025 vacancies for free technical courses. Registrations were temporarily suspended; monitor the official website for reopening.',
+                    link: 'https://www.ifpi.edu.br/',
+                    courses: 'Informatics, Systems Analysis and Development (confirm in edital)'
+                },
+                {
+                    name: 'UFRRJ',
+                    status: 'special',
+                    title: 'Residual Vacancies 2025.2',
+                    dates: 'Registrations: June 27 - July 4, 2025',
+                    summary: 'Process for re-entry and transfers. The edital indicates no vacancies for Information Systems or Computer Science in this call.',
+                    link: 'https://portal.ufrrj.br/reingresso-e-transferencias-2025-2-processo-seletivo-para-vagas-residuais-da-graduacao/',
+                    courses: 'Information Systems (No Vacancies), Computer Science (No Vacancies)'
+                },
+                {
+                    name: 'Faeterj Petrópolis',
+                    status: 'closed',
+                    title: 'Vestibular 2025.2',
+                    dates: 'Registrations closed on June 8, 2025',
+                    summary: 'Offered vacancies for the Technologist in IT and Communication course. The application period has ended.',
+                    link: '#',
+                    courses: 'Technology in Information and Communication'
+                },
+                {
+                    name: 'UFGD',
+                    status: 'closed',
+                    title: 'Transfer/Diploma Holder Vacancies',
+                    dates: 'Registrations closed on May 16, 2025',
+                    summary: 'Selective process to fill idle vacancies. The application period has finished, with results imminent.',
+                    link: '#',
+                    courses: 'Not specified'
+                },
+                {
+                    name: 'UFAPE',
+                    status: 'special',
+                    title: 'Extra SISU Edital 2025.2',
+                    dates: 'Announced on June 13, 2025',
+                    summary: 'A supplemental SISU edital was announced, but specific details on courses and deadlines were not available. Requires constant monitoring of the official site.',
+                    link: '#',
+                    courses: 'Not specified'
+                }
+            ];
+
             const opportunitiesGrid = document.getElementById('opportunities-grid');
             const filterContainer = document.getElementById('filter-container');
             const getTipBtn = document.getElementById('get-tip-btn');
@@ -326,13 +251,12 @@
                 opportunitiesGrid.innerHTML = '';
                 const filteredData = opportunitiesData.filter(item => {
                     if (filter === 'all') return true;
-                    if (filter === 'special') return item.status === 'special';
                     return item.status === filter;
                 });
 
                 if (filteredData.length === 0) {
-                    opportunitiesGrid.innerHTML = `<p class="text-slate-500 text-center md:col-span-2 lg:col-span-3">No opportunities match the selected filter.</p>`;
-                    return;
+                     opportunitiesGrid.innerHTML = `<p class="text-slate-500 text-center md:col-span-2 lg:col-span-3">No opportunities match the selected filter.</p>`;
+                     return;
                 }
                 
                 filteredData.forEach(item => {
@@ -353,16 +277,6 @@
                             break;
                     }
 
-                    let coursesHtml = '';
-                    if (item.courses && item.courses.length > 0) {
-                        coursesHtml += `<p class="font-semibold text-slate-700 mt-3 mb-1">Courses:</p><ul class="list-disc list-inside text-sm text-slate-700 space-y-1">`;
-                        item.courses.forEach((course, index) => {
-                            const courseId = `${item.id}-${course.replace(/[^a-zA-Z0-9]/g, '-')}-${index}`; // Unique ID for description div
-                            coursesHtml += `<li><span class="course-link font-medium" data-course="${course}" data-course-id="${courseId}">${course}</span><div id="${courseId}" class="course-description-container mt-1"></div></li>`;
-                        });
-                        coursesHtml += `</ul>`;
-                    }
-                    
                     const card = `
                         <div class="opportunity-card bg-white p-5 rounded-lg shadow-md border-l-4 ${statusClass.split(' ')[0]} flex flex-col justify-between transition-transform transform hover:scale-105" data-status="${item.status}">
                             <div>
@@ -373,7 +287,7 @@
                                 <h5 class="font-semibold text-slate-600 mb-1">${item.title}</h5>
                                 <p class="text-sm text-slate-500 font-medium mb-3">${item.dates}</p>
                                 <p class="text-sm text-slate-700">${item.summary}</p>
-                                ${coursesHtml}
+                                <p class="text-sm text-slate-700 mt-3"><span class="font-semibold">Courses:</span> ${item.courses}</p>
                             </div>
                             <a href="${item.link}" target="_blank" rel="noopener noreferrer" class="block w-full text-center bg-slate-800 text-white font-semibold py-2 mt-4 rounded-md hover:bg-slate-900 transition-colors">
                                 View Edital
@@ -381,22 +295,6 @@
                         </div>
                     `;
                     opportunitiesGrid.innerHTML += card;
-                });
-
-                // Add event listeners for course links after rendering
-                document.querySelectorAll('.course-link').forEach(link => {
-                    link.addEventListener('click', (e) => {
-                        const courseName = e.target.dataset.course;
-                        const courseDescId = e.target.dataset.courseId;
-                        const descContainer = document.getElementById(courseDescId);
-                        
-                        // Toggle visibility or generate
-                        if (descContainer.innerHTML.trim() !== '') {
-                            descContainer.innerHTML = ''; // Hide if already visible
-                        } else {
-                            generateCourseDescription(courseName, descContainer);
-                        }
-                    });
                 });
             };
 
@@ -415,6 +313,26 @@
 
             renderOpportunities(); // Initial render of opportunities
             
+            function generateApplicationTip() {
+                const admissionsTips = [
+                    "📅 Always check edital dates carefully — they vary by institution.",
+                    "📄 Prepare your documents early: ID, ENEM results, transcripts, etc.",
+                    "🌐 Many vestibular exams accept ENEM scores — you may not need to take a new test.",
+                    "🧾 Read each edital fully before applying. Small details matter!",
+                    "🎓 Private universities often open more seats mid-year than public ones.",
+                    "🚨 Use an email address you check often — communication happens fast!",
+                    "👨‍💻 Some technical courses are free and have shorter duration — consider them.",
+                    "🔁 Check if your ENEM score qualifies you for SISU waitlist reuse.",
+                    "📍 Prioritize local or online options if travel is a challenge.",
+                    "🕐 Don't wait until the last minute to apply — servers crash near deadlines!"
+                ];
+
+                const tipDisplayElement = document.getElementById('admissions-tip-display');
+                const randomIndex = Math.floor(Math.random() * admissionsTips.length);
+                const tip = admissionsTips[randomIndex];
+                tipDisplayElement.innerHTML = `<p class="text-slate-700 italic">${tip}</p>`;
+            }
+
             getTipBtn.addEventListener('click', generateApplicationTip); // Add event listener for tip button
 
             const tooltipTitleCallback = (tooltipItems) => {
