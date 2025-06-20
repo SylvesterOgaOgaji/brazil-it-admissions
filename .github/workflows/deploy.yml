@@ -1,0 +1,52 @@
+# .github/workflows/deploy.yml
+name: Deploy to GitHub Pages with Secret Injection
+
+on:
+  push:
+    branches:
+      - main # This workflow runs when you push to the 'main' branch
+
+permissions:
+  contents: write # Allows the workflow to write to the GITHUB_TOKEN for pages deployment
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js (needed for npm install, not strictly for HTML but good practice)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20' # Or any recent stable version
+
+      - name: Install dependencies (optional, but good for future proofing)
+        run: |
+          # If you ever add a package.json for build tools, uncomment this:
+          # npm install
+
+      - name: Inject Firebase API Key into index.html
+        run: |
+          # Use sed to replace the placeholder with the actual secret API key
+          # The 'g' at the end ensures all occurrences are replaced.
+          # Note: We use '|' as the delimiter for sed because the API key contains '/', which would conflict with default '/'.
+          sed -i "s|VITE_FIREBASE_API_KEY_PLACEHOLDER|${{ secrets.FIREBASE_API_KEY }}|g" index.html
+        env:
+          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }} # Make the secret available to this step
+
+      - name: Inject Firebase API Key into thailand-masters-it-spa.html
+        run: |
+          sed -i "s|VITE_FIREBASE_API_KEY_PLACEHOLDER|${{ secrets.FIREBASE_API_KEY }}|g" thailand-masters-it-spa.html
+        env:
+          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./ # This means it publishes the root of your repository
+          # If your files are in a 'docs' folder, change publish_dir: ./docs
+          # If you're using a custom domain and need CNAME, uncomment and set this:
+          # cname: your-custom-domain.com
