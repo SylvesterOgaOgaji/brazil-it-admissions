@@ -6,178 +6,167 @@
     <title>Interactive Dashboard: Brazil IT & CS Admissions 2025.2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-    <!-- Chosen Palette: Warm Neutrals & Subtle Accents -->
-    <!-- Application Structure Plan: A dashboard-centric, single-page application designed for task-oriented exploration. The structure prioritizes immediate access to actionable information for prospective students.
-        1. Header & Navigation: A sticky header with the application title and navigation buttons that smoothly scroll to the relevant sections. Now includes a link to the Thailand Master's page.
-        2. Overview Dashboard: A high-level view with key metrics (total vacancies, open editais) and a primary chart showing the distribution of admission routes. This gives users an instant summary of the landscape described in the report, and now includes a dynamic admissions tip generator.
-        3. Interactive Opportunities Hub: A filterable list of all institutions mentioned in the report. Users can filter by 'Open', 'Closed', or 'Special' status. This is the core interactive component, allowing users to drill down into the specific data. Clicking an item reveals detailed information and a link to the official source.
-        4. Admission Pathways Explained: A section using styled cards to clearly explain the main routes (Vestibular, SISU, Transfer), providing essential context for users unfamiliar with the Brazilian system.
-        This structure was chosen to empower users to quickly find relevant, open opportunities and understand the context around them, transforming the dense report into an actionable tool. -->
-    <!-- Visualization & Content Choices:
-        - Report Info: Overall statistics on different admission routes. Goal: Compare. Viz/Method: Donut Chart (Chart.js/Canvas). Interaction: Hover tooltips. Justification: Excellent for showing part-to-whole relationships at a glance, visualizing the report's conclusion that institutional processes are key.
-        - Report Info: List of all universities and their current application status. Goal: Organize & Compare. Viz/Method: Interactive Card Grid (HTML/CSS + JS). Interaction: Click to filter by status, view details within the card. Justification: Provides a powerful, user-driven way to explore the core dataset of the report, far more effective than a static table.
-        - Report Info: General application steps. Goal: Organize. Viz/Method: Flowchart Diagram (HTML/CSS with Tailwind). Interaction: Static visual guide. Justification: Simplifies the complex process mentioned in the report into digestible, visual steps, adhering to the NO SVG/Mermaid constraint.
-        - Report Info: Vacancies per course at specific institutions (e.g., UNICAP). Goal: Inform. Viz/Method: Key-value text within the interactive cards. Justification: Directly presents the numbers without cluttering the UI with unnecessary charts for simple data points.
-        - NEW FEATURE: Dynamic Admissions Tip. Report Info: General admissions advice. Goal: Inform & Engage. Viz/Method: Textual Tip (randomly selected from list) displayed upon button click. Interaction: Click button to get a new tip. Justification: Provides quick, practical insights or reminders, enhancing user engagement.
-        CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
-    <style>
-        body { font-family: 'Inter', sans-serif; }
-        .chart-container {
-            position: relative;
-            width: 100%;
-            max-width: 400px;
-            margin-left: auto;
-            margin-right: auto;
-            height: 300px;
-            max-height: 350px;
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics.js";
+
+        // Your web app's Firebase configuration - DO NOT CHANGE THESE VALUES
+        const firebaseConfig = {
+            apiKey: "AIzaSyAV6d-joeaVvfv-LU3my3UCz7JxblQ1yXk",
+            authDomain: "it-scholarship-436d1.firebaseapp.com",
+            projectId: "it-scholarship-436d1",
+            storageBucket: "it-scholarship-436d1.firebasestorage.app",
+            messagingSenderId: "612771636826",
+            appId: "1:612771636826:web:a3e6a7782edbb26cf71a63",
+            measurementId: "G-VRE6HKC0WG"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const googleProvider = new GoogleAuthProvider();
+        const analytics = getAnalytics(app);
+
+        // UI Elements (defined globally in the module scope for accessibility)
+        const loginModal = document.getElementById('login-modal');
+        const openLoginBtn = document.getElementById('open-login-btn');
+        const closeLoginBtn = document.getElementById('close-login-btn');
+        const loginForm = document.getElementById('login-form');
+        const signupForm = document.getElementById('signup-form');
+        const switchFormLink = document.getElementById('switch-form-link');
+        const logoutBtn = document.getElementById('logout-btn');
+        const userInfoDisplay = document.getElementById('user-info');
+        const protectedContent = document.getElementById('protected-content');
+        const unauthenticatedMessage = document.getElementById('unauthenticated-message');
+        const googleLoginBtn = document.getElementById('google-login-btn');
+        const googleSignupBtn = document.getElementById('google-signup-btn');
+
+
+        // Handle form switching
+        if (switchFormLink) {
+            switchFormLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (loginForm.classList.contains('hidden')) {
+                    loginForm.classList.remove('hidden');
+                    signupForm.classList.add('hidden');
+                    switchFormLink.textContent = 'Need an account? Sign Up';
+                } else {
+                    loginForm.classList.add('hidden');
+                    signupForm.classList.remove('hidden');
+                    switchFormLink.textContent = 'Already have an account? Login';
+                }
+            });
         }
-        @media (min-width: 768px) {
-            .chart-container { height: 350px; }
+
+
+        // Open/Close Modal
+        if (openLoginBtn) {
+            openLoginBtn.addEventListener('click', () => {
+                loginModal.classList.remove('hidden');
+            });
         }
-        .nav-btn.active {
-            background-color: #4A5568;
-            color: #FFFFFF;
+        if (closeLoginBtn) {
+            closeLoginBtn.addEventListener('click', () => {
+                loginModal.classList.add('hidden');
+            });
         }
-        .flowchart-step {
-            min-height: 100px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            position: relative;
+
+
+        // Email/Password Login
+        if (loginForm) {
+            loginForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const email = loginForm.email.value;
+                const password = loginForm.password.value;
+                try {
+                    await signInWithEmailAndPassword(auth, email, password);
+                    loginModal.classList.add('hidden');
+                } catch (error) {
+                    alert(`Login Failed: ${error.message}`);
+                    console.error("Login Error:", error);
+                }
+            });
         }
-        .flowchart-arrow::after {
-            content: '→';
-            font-size: 2rem;
-            color: #CBD5E0;
-            position: absolute;
-            right: -28px;
-            top: 50%;
-            transform: translateY(-50%);
+
+
+        // Email/Password Signup
+        if (signupForm) {
+            signupForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const email = signupForm.email.value;
+                const password = signupForm.password.value;
+                try {
+                    await createUserWithEmailAndPassword(auth, email, password);
+                    loginModal.classList.add('hidden');
+                } catch (error) {
+                    alert(`Signup Failed: ${error.message}`);
+                    console.error("Signup Error:", error);
+                }
+            });
         }
-        @media (max-width: 767px) {
-            .flowchart-arrow::after {
-                content: '↓';
-                right: 50%;
-                top: auto;
-                bottom: -28px;
-                transform: translateX(50%);
+
+
+        // Google Sign-in for Login Form
+        if (googleLoginBtn) {
+            googleLoginBtn.addEventListener('click', async () => {
+                try {
+                    await signInWithPopup(auth, googleProvider);
+                    loginModal.classList.add('hidden');
+                } catch (error) {
+                    alert(`Google Login Failed: ${error.message}`);
+                    console.error("Google Login Error:", error);
+                }
+            });
+        }
+
+        // Google Sign-in for Signup Form (same logic as login, just for consistency in UI)
+        if (googleSignupBtn) {
+            googleSignupBtn.addEventListener('click', async () => {
+                try {
+                    await signInWithPopup(auth, googleProvider);
+                    loginModal.classList.add('hidden');
+                } catch (error) {
+                    alert(`Google Sign-up Failed: ${error.message}`);
+                    console.error("Google Sign-up Error:", error);
+                }
+            });
+        }
+
+
+        // Logout
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', async () => {
+                try {
+                    await signOut(auth);
+                } catch (error) {
+                    alert(`Logout Failed: ${error.message}`);
+                    console.error("Logout Error:", error);
+                }
+            });
+        }
+
+        // Auth State Listener
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                // User is signed in
+                if (userInfoDisplay) userInfoDisplay.textContent = `Logged in as: ${user.email || user.displayName}`;
+                if (openLoginBtn) openLoginBtn.classList.add('hidden');
+                if (logoutBtn) logoutBtn.classList.remove('hidden');
+                if (protectedContent) protectedContent.classList.remove('hidden');
+                if (unauthenticatedMessage) unauthenticatedMessage.classList.add('hidden');
+            } else {
+                // User is signed out
+                if (userInfoDisplay) userInfoDisplay.textContent = 'Not logged in';
+                if (openLoginBtn) openLoginBtn.classList.remove('hidden');
+                if (logoutBtn) logoutBtn.classList.add('hidden');
+                if (protectedContent) protectedContent.classList.add('hidden'); // Hide protected content
+                if (unauthenticatedMessage) unauthenticatedMessage.classList.remove('hidden'); // Show message
             }
-        }
-    </style>
-</head>
-<body class="bg-slate-50 text-slate-800">
+        });
 
-    <header class="bg-white/90 backdrop-blur-lg sticky top-0 z-50 shadow-sm">
-        <div class="container mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between items-center py-4">
-                <h1 class="text-xl md:text-2xl font-bold text-slate-900">Brazil IT Admissions 2025.2</h1>
-                <nav id="main-nav" class="hidden md:flex space-x-2">
-                    <button data-target="dashboard" class="nav-btn px-4 py-2 rounded-md text-sm font-semibold text-slate-600 hover:bg-slate-200 transition-colors">Dashboard</button>
-                    <button data-target="opportunities" class="nav-btn px-4 py-2 rounded-md text-sm font-semibold text-slate-600 hover:bg-slate-200 transition-colors">Opportunities</button>
-                    <button data-target="pathways" class="nav-btn px-4 py-2 rounded-md text-sm font-semibold text-slate-600 hover:bg-slate-200 transition-colors">Pathways</button>
-                    <a href="thailand-masters-it-spa.html" class="px-4 py-2 rounded-md text-sm font-semibold text-slate-600 hover:bg-slate-200 transition-colors" target="_blank">Masters in Thailand</a>
-                </nav>
-            </div>
-        </div>
-    </header>
 
-    <main class="container mx-auto p-4 sm:p-6 lg:p-8">
-
-        <section id="dashboard" class="mb-16">
-            <h2 class="text-3xl font-bold text-slate-900 mb-4 text-center">Admissions Landscape Overview</h2>
-            <p class="text-center text-slate-600 max-w-3xl mx-auto mb-8">This dashboard summarizes admission opportunities for IT, Computer Science, and Innovation in Brazil for the 2nd semester of 2025. The landscape is decentralized, mixing national programs with direct university applications.</p>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
-                <div class="bg-white p-6 rounded-lg shadow-md text-center border-t-4 border-blue-500">
-                    <div class="text-5xl font-bold text-slate-800" id="stat-open">3</div>
-                    <p class="text-lg font-semibold text-slate-700 mt-2">Active/Recent Editais</p>
-                </div>
-                <div class="bg-white p-6 rounded-lg shadow-md text-center border-t-4 border-blue-500">
-                    <div class="text-5xl font-bold text-slate-800" id="stat-total-vacancies">1,205+</div>
-                    <p class="text-lg font-semibold text-slate-700 mt-2">Total Vacancies Identified</p>
-                </div>
-                <div class="bg-white p-6 rounded-lg shadow-md text-center border-t-4 border-blue-500">
-                    <div class="text-5xl font-bold text-slate-800" id="stat-institutions">6</div>
-                    <p class="text-lg font-semibold text-slate-700 mt-2">Key Institutions Tracked</p>
-                </div>
-            </div>
-            <div class="bg-white p-6 rounded-lg shadow-md">
-                <h3 class="text-xl font-bold text-slate-900 mb-4 text-center">Primary Admission Routes</h3>
-                 <div class="chart-container">
-                    <canvas id="admissionRoutesChart"></canvas>
-                </div>
-                <p class="text-sm text-center text-slate-500 mt-4">The majority of 2nd-semester opportunities arise from direct university vestibulares and special processes, rather than a new, full SISU cycle.</p>
-            </div>
-
-            <div class="bg-white p-6 rounded-lg shadow-md mt-10 text-center">
-                <h3 class="text-xl font-bold text-slate-900 mb-4">Get an Admissions Tip!</h3>
-                <button id="get-tip-btn" class="bg-blue-500 text-white px-6 py-2 rounded-full font-semibold hover:bg-blue-600 transition-colors">
-                    Generate Tip
-                </button>
-                <div id="admissions-tip-display" class="mt-4 text-slate-700 italic">
-                    Click the button above for a quick tip on Brazilian IT admissions!
-                </div>
-            </div>
-        </section>
-
-        <section id="opportunities" class="mb-16">
-            <h2 class="text-3xl font-bold text-slate-900 mb-4 text-center">Interactive Opportunity Explorer</h2>
-            <p class="text-center text-slate-600 max-w-3xl mx-auto mb-8">Filter institutions to find editais matching your interest. Status is based on the latest available information from the report. Click a card for more details.</p>
-            <div class="flex justify-center flex-wrap gap-2 mb-8" id="filter-container">
-                <button data-filter="all" class="filter-btn bg-slate-800 text-white px-4 py-2 rounded-full font-semibold">All</button>
-                <button data-filter="open" class="filter-btn bg-white text-slate-700 px-4 py-2 rounded-full font-semibold border border-slate-300">Open</button>
-                <button data-filter="closed" class="filter-btn bg-white text-slate-700 px-4 py-2 rounded-full font-semibold border border-slate-300">Closed</button>
-                <button data-filter="special" class="filter-btn bg-white text-slate-700 px-4 py-2 rounded-full font-semibold border border-slate-300">Special Cases</button>
-            </div>
-            <div id="opportunities-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <!-- Opportunity cards will be injected here by JavaScript -->
-            </div>
-        </section>
-
-        <section id="pathways" class="mb-16">
-            <h2 class="text-3xl font-bold text-slate-900 mb-6 text-center">Understanding Admission Pathways</h2>
-            <p class="text-center text-slate-600 max-w-3xl mx-auto mb-8">Access to higher education in Brazil for the second semester occurs through several distinct routes. Understanding each is key to planning your application.</p>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div class="bg-white p-6 rounded-lg shadow-md">
-                    <h3 class="font-bold text-xl mb-2 text-slate-900">Institutional Vestibular</h3>
-                    <p class="text-slate-600">A direct entrance exam created and managed by the university itself. This is the primary entry method for many private and some public universities in the 2nd semester. It can use a specific exam or accept an ENEM score.</p>
-                </div>
-                <div class="bg-white p-6 rounded-lg shadow-md">
-                    <h3 class="font-bold text-xl mb-2 text-slate-900">SISU / Prouni (Waitlist)</h3>
-                    <p class="text-slate-600">For the 2nd semester, these national systems typically operate by calling candidates from the waitlist generated during the main application period at the start of the year. New, open applications are less common.</p>
-                </div>
-                <div class="bg-white p-6 rounded-lg shadow-md">
-                    <h3 class="font-bold text-xl mb-2 text-slate-900">Residual Vacancies / Transfer</h3>
-                    <p class="text-slate-600">These are special editais for students transferring from another institution or for those who already hold a degree. The availability of vacancies in popular IT courses through this route can be very limited and highly competitive.</p>
-                </div>
-            </div>
-        </section>
-        
-        <section id="process" class="mb-16">
-            <h2 class="text-3xl font-bold text-slate-900 mb-6 text-center">General Application Process</h2>
-             <p class="text-center text-slate-600 max-w-3xl mx-auto mb-8">While each institution has its own specific steps, the general application journey follows this flow. Always refer to the official edital for precise instructions.</p>
-            <div class="grid grid-cols-1 md:grid-cols-5 gap-y-8 md:gap-x-12">
-                <div class="flowchart-step bg-white p-4 rounded-lg shadow-md flowchart-arrow">1. Find & Read the Official Edital</div>
-                <div class="flowchart-step bg-white p-4 rounded-lg shadow-md flowchart-arrow">2. Check Requirements & Deadlines</div>
-                <div class="flowchart-step bg-white p-4 rounded-lg shadow-md flowchart-arrow">3. Register Online & Submit Documents</div>
-                <div class="flowchart-step bg-white p-4 rounded-lg shadow-md flowchart-arrow">4. Take Exam or Use ENEM Score</div>
-                <div class="flowchart-step bg-white p-4 rounded-lg shadow-md">5. Check Results & Follow Enrollment Steps</div>
-            </div>
-        </section>
-
-    </main>
-    
-    <footer class="bg-white mt-16 py-8 border-t">
-        <div class="container mx-auto text-center text-sm text-slate-500">
-            <p>This interactive dashboard was generated from the "Analysis of Open EDITALs for 2nd Semester 2025" report.</p>
-            <p>All information is for guidance purposes. Always consult the official institutional edital for definitive details.</p>
-        </div>
-    </footer>
-
-    <script>
         document.addEventListener('DOMContentLoaded', () => {
             const FONT_COLOR = '#334155';
             const GRID_COLOR = '#E2E8F0';
@@ -212,7 +201,7 @@
                     title: 'Residual Vacancies 2025.2',
                     dates: 'Registrations: June 27 - July 4, 2025',
                     summary: 'Process for re-entry and transfers. The edital indicates no vacancies for Information Systems or Computer Science in this call.',
-                    link: 'https://portal.ufrrj.br/reingresso-e-transferencias-2025-2-processo-seletivo-para-vagas-residuais-da-graduacao/',
+                    link: 'https://portal.ufrrj.br/reingresso-e-transferencias-2025-2-processo-seletivo- Laras-vagas-residuais-da-graduacao/',
                     courses: 'Information Systems (No Vacancies), Computer Science (No Vacancies)'
                 },
                 {
@@ -374,12 +363,12 @@
                 }
             });
 
-            const nav = document.getElementById('main-nav');
-            nav.addEventListener('click', e => {
-                if (e.target.tagName === 'BUTTON') {
+            const navButtons = document.querySelectorAll('header nav button');
+            document.querySelector('header nav').addEventListener('click', e => {
+                if (e.target.tagName === 'BUTTON' && e.target.dataset.target) {
                     const targetId = e.target.dataset.target;
                     document.getElementById(targetId).scrollIntoView({ behavior: 'smooth' });
-                    document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+                    navButtons.forEach(btn => btn.classList.remove('active'));
                     e.target.classList.add('active');
                 }
             });
