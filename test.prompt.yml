@@ -1,0 +1,8 @@
+messages:
+  - role: system
+    content: ''
+  - role: user
+    content: ''
+model: microsoft/phi-4-mini-reasoning
+modelParameters:
+  chatHistory: 19
