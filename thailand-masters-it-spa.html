@@ -11,13 +11,13 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <!-- Chosen Palette: Warm Neutrals & Subtle Accents -->
     <!-- Application Structure Plan: A dashboard-centric, single-page application designed for task-oriented exploration of Master's programs.
-        1. Header & Navigation: Sticky header with title and navigation buttons (Overview, Programs, Scholarships, Study Plan, Admissions).
+        1. Header & Navigation: Sticky header with title and navigation buttons (Overview, Programs, Scholarships, Study Plan, Admissions). Now includes Login/Logout buttons and user info.
         2. Overview Dashboard: Key statistics about Thai Master's IT landscape, including a chart on popular specializations.
         3. Programs Explorer: A filterable grid of mock universities and their IT Master's programs, with details like duration, and estimated tuition. Now includes hardcoded "Key Takeaways" summary feature for each program, and activated "Learn More" buttons.
         4. Scholarships: A new section detailing available scholarships, starting with Walailak University, including benefits and eligibility. This section now includes links for "Other Prominent Thai Scholarships".
         5. Study Plan: A new section providing an example study plan from Walailak University's IT Master's programs, now with hardcoded "Clarify" feature for sections.
         6. Admissions Process: A general flowchart for Master's program application in Thailand.
-        This structure facilitates quick insights and allows users to browse programs, explore funding opportunities, understand curriculum structure, and grasp the general application journey. -->
+        This structure facilitates quick insights and allows users to browse programs, explore funding opportunities, understand curriculum structure, and grasp the general application journey. All main content is protected by a login wall. -->
     <!-- Visualization & Content Choices:
         - Report Info: Distribution of popular IT Master's specializations. Goal: Inform & Compare. Viz/Method: Donut Chart (Chart.js/Canvas). Interaction: Hover tooltips. Justification: Visualizes program popularity at a glance.
         - Report Info: List of mock universities and their IT Master's programs. Goal: Organize & Compare. Viz/Method: Interactive Card Grid (HTML/CSS + JS). Interaction: Filter by specialization, view program details, and now toggle hardcoded summaries and click "Learn More" for illustrative external links. Justification: Allows users to explore diverse offerings and get quick insights, with activated navigation to external (illustrative) sources.
@@ -25,6 +25,7 @@
         - NEW: Report Info: Walailak University M.Sc. study plan. Goal: Inform. Viz/Method: Textual breakdown with lists (HTML/CSS), now with hardcoded clarification. Interaction: Static information + clickable links for hardcoded explanations. Justification: Provides granular insight into curriculum structure and enhanced understanding.
         - UPDATED: Report Info: Other Prominent Thai Scholarships. Goal: Inform. Viz/Method: Linked List (HTML/CSS). Interaction: Clickable university names for illustrative external links. Justification: Provides direct (illustrative) access to scholarship sources.
         - Report Info: General Master's admissions process. Goal: Organize. Viz/Method: Flowchart Diagram (HTML/CSS with Tailwind). Interaction: Static visual guide. Justification: Simplifies complex multi-step process.
+        - AUTHENTICATION: Goal: Secure content. Viz/Method: Login Modal (HTML/CSS/JS), conditional display of main content (JS). Interaction: Login/Signup via email/password or Google, Logout. Justification: Provides a basic access control layer for the application.
         CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
     <style>
         body { font-family: 'Inter', sans-serif; }
@@ -87,6 +88,44 @@
             font-size: 0.875rem; /* text-sm */
             color: #1e3a8a; /* Darker blue text */
         }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background-color: #ffffff;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            width: 90%;
+            max-width: 400px;
+            position: relative;
+        }
+        .modal-close-btn {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #64748B;
+        }
+        .form-switch-link {
+            text-align: center;
+            margin-top: 1rem;
+            color: #3B82F6;
+            cursor: pointer;
+            text-decoration: underline;
+        }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800">
@@ -95,7 +134,10 @@
         <div class="container mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center py-4">
                 <h1 class="text-xl md:text-2xl font-bold text-slate-900">Thailand IT Masters Programs</h1>
-                <nav id="main-nav" class="hidden md:flex space-x-2">
+                <nav class="flex items-center space-x-2">
+                    <div id="user-info" class="text-sm text-slate-600 mr-4">Not logged in</div>
+                    <button id="open-login-btn" class="nav-btn px-4 py-2 rounded-md text-sm font-semibold text-slate-600 hover:bg-slate-200 transition-colors">Login</button>
+                    <button id="logout-btn" class="nav-btn px-4 py-2 rounded-md text-sm font-semibold text-slate-600 hover:bg-slate-200 transition-colors hidden">Logout</button>
                     <button data-target="overview" class="nav-btn px-4 py-2 rounded-md text-sm font-semibold text-slate-600 hover:bg-slate-200 transition-colors">Overview</button>
                     <button data-target="programs" class="nav-btn px-4 py-2 rounded-md text-sm font-semibold text-slate-600 hover:bg-slate-200 transition-colors">Programs</button>
                     <button data-target="scholarships" class="nav-btn px-4 py-2 rounded-md text-sm font-semibold text-slate-600 hover:bg-slate-200 transition-colors">Scholarships</button>
@@ -106,173 +148,229 @@
         </div>
     </header>
 
+    <!-- Login Modal -->
+    <div id="login-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <span id="close-login-btn" class="modal-close-btn">&times;</span>
+            <h2 class="text-2xl font-bold text-slate-900 mb-6 text-center">Access Required</h2>
+
+            <!-- Login Form -->
+            <form id="login-form" class="space-y-4">
+                <h3 class="text-xl font-bold text-slate-900 mb-4 text-center">Login</h3>
+                <div>
+                    <label for="login-email" class="block text-sm font-medium text-slate-700">Email</label>
+                    <input type="email" id="login-email" name="email" required class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div>
+                    <label for="login-password" class="block text-sm font-medium text-slate-700">Password</label>
+                    <input type="password" id="login-password" name="password" required class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <button type="submit" class="w-full bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 transition-colors font-semibold">Login</button>
+                <button type="button" id="google-login-btn" class="w-full flex items-center justify-center bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 transition-colors font-semibold mt-2">
+                    <svg class="w-5 h-5 mr-2" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M15.545 6.558a9.42 9.42 0 0 1 .139 1.626c0 2.434-.87 4.492-2.384 5.885h.002C11.978 15.292 10.15 16 8 16A8 8 0 0 1 8 0a7.99 7.99 0 0 1 5.274 1.97L13.75 2.5l-.272.272A6.476 6.476 0 0 0 8 2C5.629 2 3.596 3.558 2.76 5.882l.004.008.016.03.013.016L2.617 6.48A6.997 6.997 0 0 0 1 8c0 1.258.337 2.448.92 3.46l.044.07.037.067.042.083.008.013.003.007.002.007c.05.084.103.167.159.248l.001.003.007.01.006.009.006.008c.05.074.1.147.15.22.001.002.003.004.004.006.037.054.076.108.115.16l.002.003.005.006.004.005c.038.046.077.091.117.135l.002.003.005.005.004.005c.038.044.077.087.117.129l.002.003.005.005.004.004c.037.042.076.084.116.126l.002.002.005.005.004.004c.036.04.074.079.113.116l.002.002.005.005.004.004c.035.038.073.075.111.111l.002.002.005.004.004.003c.034.035.07.069.106.102l.001.002.004.004.003.002c.033.03.067.059.1.088l.001.002.004.003.002.002c.03.028.06.055.089.081l.001.001.003.003.002.002c.027.025.053.048.079.07l.001.001.003.002.002.002c.024.021.047.04.07.058l.001.001.002.002.001.001c.021.018.04.034.059.049l.001.001.002.001.001.001c.018.014.035.027.052.039l.001.001.001.001.001.001c.015.011.029.02.043.029l.001.001.001.001c.013.008.025.015.036.021l.001.001c.010.006.019.011.028.015l.001.001c.009.004.017.008.025.01l.001.001c.007.002.014.004.02.005l.001.001c.006.002.011.003.016.004l.001.001c.004.001.008.002.011.002l.001.001c.003 0 .005.001.008.001l.001.001h.001l.001.001h.001c.002 0 .003 0 .004 0h.001c.002 0 .003 0 .005 0h.001c.002 0 .003 0 .005 0h.001c.002 0 .003 0 .005 0h.001c.001 0 .002 0 .003 0h.001c.002 0 .003 0 .004 0h.001c.002 0 .003 0 .004 0h.001c.002 0 .003 0 .004 0h.001a7.997 7.997 0 0 1 5.92 2.052L13.75 13.5l.272-.272a6.476 6.476 0 0 0 1.523-4.225c0-.987-.24-1.922-.685-2.75l-.004-.008-.016-.03-.013-.016L15.545 6.558z"/>
+                    </svg>
+                    Sign in with Google
+                </button>
+            </form>
+
+            <!-- Signup Form (initially hidden) -->
+            <form id="signup-form" class="space-y-4 hidden">
+                <h3 class="text-xl font-bold text-slate-900 mb-4 text-center">Sign Up</h3>
+                <div>
+                    <label for="signup-email" class="block text-sm font-medium text-slate-700">Email</label>
+                    <input type="email" id="signup-email" name="email" required class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div>
+                    <label for="signup-password" class="block text-sm font-medium text-slate-700">Password</label>
+                    <input type="password" id="signup-password" name="password" required class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <button type="submit" class="w-full bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 transition-colors font-semibold">Sign Up</button>
+                <button type="button" id="google-signup-btn" class="w-full flex items-center justify-center bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 transition-colors font-semibold mt-2">
+                    <svg class="w-5 h-5 mr-2" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M15.545 6.558a9.42 9.42 0 0 1 .139 1.626c0 2.434-.87 4.492-2.384 5.885h.002C11.978 15.292 10.15 16 8 16A8 8 0 0 1 8 0a7.99 7.99 0 0 1 5.274 1.97L13.75 2.5l-.272.272A6.476 6.476 0 0 0 8 2C5.629 2 3.596 3.558 2.76 5.882l.004.008.016.03.013.016L2.617 6.48A6.997 6.997 0 0 0 1 8c0 1.258.337 2.448.92 3.46l.044.07.037.067.042.083.008.013.003.007.002.007c.05.084.103.167.159.248l.001.003.007.01.006.009.006.008c.05.074.1.147.15.22.001.002.003.004.004.006.037.054.076.108.115.16l.002.003.005.006.004.005c.038.046.077.091.117.135l.002.003.005.005.004.005c.038.044.077.087.117.129l.002.003.005.005.004.004c.037.042.076.084.116.126l.002.002.005.005.004.004c.036.04.074.079.113.116l.002.002.005.005.004.004c.035.038.073.075.111.111l.002.002.005.004.004.003c.034.035.07.069.106.102l.001.002.004.004.003.002c.033.03.067.059.1.088l.001.002.004.003.002.002c.03.028.06.055.089.081l.001.001.003.003.002.002c.027.025.053.048.079.07l.001.001.003.002.002.002c.024.021.047.04.07.058l.001.001.002.002.001.001c.021.018.04.034.059.049l.001.001.002.001.001.001c.018.014.035.027.052.039l.001.001.001.001.001.001c.015.011.029.02.043.029l.001.001.001.001c.013.008.025.015.036.021l.001.001c.010.006.019.011.028.015l.001.001c.009.004.017.008.025.01l.001.001c.007.002.014.004.02.005l.001.001c.006.002.011.003.016.004l.001.001c.004.001.008.002.011.002l.001.001c.003 0 .005.001.008.001l.001.001h.001l.001.001h.001c.002 0 .003 0 .004 0h.001c.002 0 .003 0 .005 0h.001c.002 0 .003 0 .005 0h.001c.002 0 .003 0 .005 0h.001c.001 0 .002 0 .003 0h.001c.002 0 .003 0 .004 0h.001c.002 0 .003 0 .004 0h.001c.002 0 .003 0 .004 0h.001a7.997 7.997 0 0 1 5.92 2.052L13.75 13.5l.272-.272a6.476 6.476 0 0 0 1.523-4.225c0-.987-.24-1.922-.685-2.75l-.004-.008-.016-.03-.013-.016L15.545 6.558z"/>
+                    </svg>
+                    Sign up with Google
+                </button>
+            </form>
+            <p id="switch-form-link" class="form-switch-link">Need an account? Sign Up</p>
+        </div>
+    </div>
+
     <main class="container mx-auto p-4 sm:p-6 lg:p-8">
+        <!-- Message for unauthenticated users -->
+        <div id="unauthenticated-message" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-8 text-center hidden">
+            <strong class="font-bold">Access Denied!</strong>
+            <span class="block sm:inline"> Please log in to view the content.</span>
+        </div>
 
-        <section id="overview" class="mb-16">
-            <h2 class="text-3xl font-bold text-slate-900 mb-4 text-center">Overview of IT Masters in Thailand</h2>
-            <p class="text-center text-slate-600 max-w-3xl mx-auto mb-8">Explore the growing opportunities for Master's level studies in Information Technology and Computer Science across Thailand's leading universities. Data presented is illustrative and based on common program structures.</p>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
-                <div class="bg-white p-6 rounded-lg shadow-md text-center border-t-4 border-emerald-500">
-                    <div class="text-5xl font-bold text-slate-800">5+</div>
-                    <p class="text-lg font-semibold text-slate-700 mt-2">Leading Universities</p>
+        <!-- Protected content -->
+        <div id="protected-content" class="hidden">
+            <section id="overview" class="mb-16">
+                <h2 class="text-3xl font-bold text-slate-900 mb-4 text-center">Overview of IT Masters in Thailand</h2>
+                <p class="text-center text-slate-600 max-w-3xl mx-auto mb-8">Explore the growing opportunities for Master's level studies in Information Technology and Computer Science across Thailand's leading universities. Data presented is illustrative and based on common program structures.</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
+                    <div class="bg-white p-6 rounded-lg shadow-md text-center border-t-4 border-emerald-500">
+                        <div class="text-5xl font-bold text-slate-800">5+</div>
+                        <p class="text-lg font-semibold text-slate-700 mt-2">Leading Universities</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md text-center border-t-4 border-emerald-500">
+                        <div class="text-5xl font-bold text-slate-800">2 Years</div>
+                        <p class="text-lg font-semibold text-slate-700 mt-2">Avg. Program Duration</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md text-center border-t-4 border-emerald-500">
+                        <div class="text-5xl font-bold text-slate-800">฿150K+</div>
+                        <p class="text-lg font-semibold text-slate-700 mt-2">Est. Annual Tuition (THB)</p>
+                    </div>
                 </div>
-                <div class="bg-white p-6 rounded-lg shadow-md text-center border-t-4 border-emerald-500">
-                    <div class="text-5xl font-bold text-slate-800">2 Years</div>
-                    <p class="text-lg font-semibold text-slate-700 mt-2">Avg. Program Duration</p>
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-xl font-bold text-slate-900 mb-4 text-center">Popular IT Masters Specializations</h3>
+                     <div class="chart-container">
+                        <canvas id="specializationChart"></canvas>
+                    </div>
+                    <p class="text-sm text-center text-slate-500 mt-4">Data Science and AI are rapidly growing fields, with a significant number of Master's programs focused on these areas.</p>
                 </div>
-                <div class="bg-white p-6 rounded-lg shadow-md text-center border-t-4 border-emerald-500">
-                    <div class="text-5xl font-bold text-slate-800">฿150K+</div>
-                    <p class="text-lg font-semibold text-slate-700 mt-2">Est. Annual Tuition (THB)</p>
-                </div>
-            </div>
-            <div class="bg-white p-6 rounded-lg shadow-md">
-                <h3 class="text-xl font-bold text-slate-900 mb-4 text-center">Popular IT Masters Specializations</h3>
-                 <div class="chart-container">
-                    <canvas id="specializationChart"></canvas>
-                </div>
-                <p class="text-sm text-center text-slate-500 mt-4">Data Science and AI are rapidly growing fields, with a significant number of Master's programs focused on these areas.</p>
-            </div>
-        </section>
+            </section>
 
-        <section id="programs" class="mb-16">
-            <h2 class="text-3xl font-bold text-slate-900 mb-4 text-center">Explore Masters Programs</h2>
-            <p class="text-center text-slate-600 max-w-3xl mx-auto mb-8">Browse a selection of illustrative IT Master's programs. Filter by specialization to find programs aligning with your career goals. This data is for demonstration purposes only. ✨ Click "Key Takeaways" for program highlights!</p>
-            <div class="flex justify-center flex-wrap gap-2 mb-8" id="filter-container-programs">
-                <button data-filter="all" class="program-filter-btn bg-slate-800 text-white px-4 py-2 rounded-full font-semibold">All</button>
-                <button data-filter="ai-data" class="program-filter-btn bg-white text-slate-700 px-4 py-2 rounded-full font-semibold border border-slate-300">AI & Data Science</button>
-                <button data-filter="software" class="program-filter-btn bg-white text-slate-700 px-4 py-2 rounded-full font-semibold border border-slate-300">Software Eng.</button>
-                <button data-filter="cybersecurity" class="program-filter-btn bg-white text-slate-700 px-4 py-2 rounded-full font-semibold border border-slate-300">Cybersecurity</button>
-                <button data-filter="is" class="program-filter-btn bg-white text-slate-700 px-4 py-2 rounded-full font-semibold border border-slate-300">Info Systems</button>
-            </div>
-            <div id="programs-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <!-- Program cards will be injected here by JavaScript -->
-            </div>
-        </section>
+            <section id="programs" class="mb-16">
+                <h2 class="text-3xl font-bold text-slate-900 mb-4 text-center">Explore Masters Programs</h2>
+                <p class="text-center text-slate-600 max-w-3xl mx-auto mb-8">Browse a selection of illustrative IT Master's programs. Filter by specialization to find programs aligning with your career goals. This data is for demonstration purposes only. ✨ Click "Key Takeaways" for program highlights!</p>
+                <div class="flex justify-center flex-wrap gap-2 mb-8" id="filter-container-programs">
+                    <button data-filter="all" class="program-filter-btn bg-slate-800 text-white px-4 py-2 rounded-full font-semibold">All</button>
+                    <button data-filter="ai-data" class="program-filter-btn bg-white text-slate-700 px-4 py-2 rounded-full font-semibold border border-slate-300">AI & Data Science</button>
+                    <button data-filter="software" class="program-filter-btn bg-white text-slate-700 px-4 py-2 rounded-full font-semibold border border-slate-300">Software Eng.</button>
+                    <button data-filter="cybersecurity" class="program-filter-btn bg-white text-slate-700 px-4 py-2 rounded-full font-semibold border border-slate-300">Cybersecurity</button>
+                    <button data-filter="is" class="program-filter-btn bg-white text-slate-700 px-4 py-2 rounded-full font-semibold border border-slate-300">Info Systems</button>
+                </div>
+                <div id="programs-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Program cards will be injected here by JavaScript -->
+                </div>
+            </section>
 
-        <section id="scholarships" class="mb-16">
-            <h2 class="text-3xl font-bold text-slate-900 mb-4 text-center">Scholarships for Masters Programs</h2>
-            <p class="text-center text-slate-600 max-w-3xl mx-auto mb-8">Funding opportunities are available for international students pursuing Master's degrees in Thailand. Here's a look at scholarships offered by Walailak University as a prominent example.</p>
+            <section id="scholarships" class="mb-16">
+                <h2 class="text-3xl font-bold text-slate-900 mb-4 text-center">Scholarships for Masters Programs</h2>
+                <p class="text-center text-slate-600 max-w-3xl mx-auto mb-8">Funding opportunities are available for international students pursuing Master's degrees in Thailand. Here's a look at scholarships offered by Walailak University as a prominent example.</p>
 
-            <div class="bg-white p-6 rounded-lg shadow-md mb-8">
-                <h3 class="text-xl font-bold text-slate-900 mb-4">Walailak University Graduate Scholarships 2025</h3>
-                <p class="text-slate-700 mb-3">Walailak University offers graduate scholarships for both Master's and Ph.D. degrees, including various IT and Computer Science related fields. These scholarships aim to attract academically capable international students and support advanced studies and research.</p>
+                <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+                    <h3 class="text-xl font-bold text-slate-900 mb-4">Walailak University Graduate Scholarships 2025</h3>
+                    <p class="text-slate-700 mb-3">Walailak University offers graduate scholarships for both Master's and Ph.D. degrees, including various IT and Computer Science related fields. These scholarships aim to attract academically capable international students and support advanced studies and research.</p>
+                    
+                    <h4 class="font-semibold text-lg text-slate-800 mb-2">Benefits:</h4>
+                    <ul class="list-disc list-inside text-slate-700 mb-3">
+                        <li>Full or partial tuition fee waivers</li>
+                        <li>Monthly living allowances to cover everyday costs</li>
+                        <li>Access to high-quality research facilities</li>
+                        <li>Opportunities to collaborate with experienced professors</li>
+                        <li>Chances to work as teaching or research assistants (TA/RA)</li>
+                    </ul>
+
+                    <h4 class="font-semibold text-lg text-slate-800 mb-2">Eligibility for Master's Degree Applicants:</h4>
+                    <ul class="list-disc list-inside text-slate-700 mb-3">
+                        <li>Bachelor's degree from a recognized institution.</li>
+                        <li>Minimum GPA of 3.00 on a 4.00 scale (or equivalent). Applications with a lower GPA may be considered if the applicant has significant research published in Scopus-indexed journals.</li>
+                        <li>Demonstrated English language proficiency (e.g., TOEFL score of 500 paper-based or equivalent).</li>
+                        <li>Not a recipient of scholarships of the same type from other organizations.</li>
+                        <li>Must study full-time at Walailak University.</li>
+                    </ul>
+                    <p class="text-sm text-slate-500 mt-4">Applications are accepted on a rolling basis. For full details and to apply, always refer to the official Walailak University Graduate Studies website.</p>
+                    <a href="https://grad.wu.ac.th/wu-scholarships/" target="_blank" rel="noopener noreferrer" class="inline-block mt-3 bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition-colors text-sm">
+                        Visit Walailak Scholarships
+                    </a>
+                </div>
+                 <div class="mt-8 bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-xl font-bold text-slate-900 mb-4">Other Prominent Thai Scholarships:</h3>
+                    <ul class="list-disc list-inside text-slate-700">
+                        <li><strong><a href="https://tica-thaigov.mfa.go.th/en/index" target="_blank" rel="noopener noreferrer">Thai Government Scholarships (TIPP)</a>:</strong> Offered by TICA, often fully funded.</li>
+                        <li><strong><a href="https://www.chula.ac.th/en/academics/admissions/scholarships-grants/" target="_blank" rel="noopener noreferrer">Chulalongkorn University Scholarships</a>:</strong> Various scholarships for international graduate students, often covering full tuition and living expenses.</li>
+                        <li><strong><a href="https://ait.ac.th/admissions/scholarships/" target="_blank" rel="noopener noreferrer">Asian Institute of Technology (AIT) Scholarships</a>:</strong> Range of scholarships, including Royal Thai Government Scholarships, often covering full tuition and living costs.</li>
+                        <li><strong><a href="https://mahidol.ac.th/en/international-students/scholarships/" target="_blank" rel="noopener noreferrer">Mahidol University Scholarships</a>:</strong> Various scholarships ranging from tuition fee waivers to full scholarships.</li>
+                    </ul>
+                    <p class="text-sm text-slate-500 mt-4">These are just a few examples. Many other Thai universities also offer their own scholarships. Thorough research on individual university websites is highly recommended.</p>
+                </div>
+            </section>
+
+            <section id="study-plan" class="mb-16">
+                <h2 class="text-3xl font-bold text-slate-900 mb-4 text-center">Example Study Plan: Walailak University M.Sc. IT Programs</h2>
+                <p class="text-center text-slate-600 max-w-3xl mx-auto mb-8">Master's programs at Walailak University (e.g., in Computer Science, Data Science & AI) typically offer different study plans emphasizing research or a combination of coursework and research. Here's a general overview based on common structures. ✨ Click "Clarify" for explanations!</p>
                 
-                <h4 class="font-semibold text-lg text-slate-800 mb-2">Benefits:</h4>
-                <ul class="list-disc list-inside text-slate-700 mb-3">
-                    <li>Full or partial tuition fee waivers</li>
-                    <li>Monthly living allowances to cover everyday costs</li>
-                    <li>Access to high-quality research facilities</li>
-                    <li>Opportunities to collaborate with experienced professors</li>
-                    <li>Chances to work as teaching or research assistants (TA/RA)</li>
-                </ul>
+                <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+                    <h3 class="font-bold text-xl text-slate-900 mb-3">Master of Science Program Structure (e.g., Data Science and AI)</h3>
+                    <p class="text-slate-700 mb-3">The program generally requires a total of 36 credits, typically completed over 2 years (4 semesters). It usually offers two main types:</p>
 
-                <h4 class="font-semibold text-lg text-slate-800 mb-2">Eligibility for Master's Degree Applicants:</h4>
-                <ul class="list-disc list-inside text-slate-700 mb-3">
-                    <li>Bachelor's degree from a recognized institution.</li>
-                    <li>Minimum GPA of 3.00 on a 4.00 scale (or equivalent). Applications with a lower GPA may be considered if the applicant has significant research published in Scopus-indexed journals.</li>
-                    <li>Demonstrated English language proficiency (e.g., TOEFL score of 500 paper-based or equivalent).</li>
-                    <li>Not a recipient of scholarships of the same type from other organizations.</li>
-                    <li>Must study full-time at Walailak University.</li>
-                </ul>
-                <p class="text-sm text-slate-500 mt-4">Applications are accepted on a rolling basis. For full details and to apply, always refer to the official Walailak University Graduate Studies website.</p>
-                <a href="https://grad.wu.ac.th/wu-scholarships/" target="_blank" rel="noopener noreferrer" class="inline-block mt-3 bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition-colors text-sm">
-                    Visit Walailak Scholarships
-                </a>
-            </div>
-             <div class="mt-8 bg-white p-6 rounded-lg shadow-md">
-                <h3 class="text-xl font-bold text-slate-900 mb-4">Other Prominent Thai Scholarships:</h3>
-                <ul class="list-disc list-inside text-slate-700">
-                    <li><strong><a href="https://tica-thaigov.mfa.go.th/en/index" target="_blank" rel="noopener noreferrer">Thai Government Scholarships (TIPP)</a>:</strong> Offered by TICA, often fully funded.</li>
-                    <li><strong><a href="https://www.chula.ac.th/en/academics/admissions/scholarships-grants/" target="_blank" rel="noopener noreferrer">Chulalongkorn University Scholarships</a>:</strong> Various scholarships for international graduate students, often covering full tuition and living expenses.</li>
-                    <li><strong><a href="https://ait.ac.th/admissions/scholarships/" target="_blank" rel="noopener noreferrer">Asian Institute of Technology (AIT) Scholarships</a>:</strong> Range of scholarships, including Royal Thai Government Scholarships, often covering full tuition and living costs.</li>
-                    <li><strong><a href="https://mahidol.ac.th/en/international-students/scholarships/" target="_blank" rel="noopener noreferrer">Mahidol University Scholarships</a>:</strong> Various scholarships ranging from tuition fee waivers to full scholarships.</li>
-                </ul>
-                <p class="text-sm text-slate-500 mt-4">These are just a few examples. Many other Thai universities also offer their own scholarships. Thorough research on individual university websites is highly recommended.</p>
-            </div>
-        </section>
+                    <h4 class="font-semibold text-lg text-slate-800 mb-2">
+                        Type A1: Research-Only (36 Credits Thesis) 
+                        <span class="llm-trigger text-sm" data-section-id="type-a1">Clarify ✨</span>
+                    </h4>
+                    <div id="type-a1-response" class="llm-response hidden"></div>
+                    <ul class="list-disc list-inside text-slate-700 mb-3">
+                        <li>Focus: Pure research, suitable for students aiming for a Ph.D. or research-intensive careers.</li>
+                        <li>Core Components:
+                            <ul class="list-circle list-inside ml-5">
+                                <li>Seminar I & II (Non-credit)</li>
+                                <li>Thesis (36 Credits)</li>
+                            </ul>
+                        </li>
+                        <li>Graduation Requirement: Publication of at least one research paper at an international standard (e.g., in a Scopus-indexed journal).</li>
+                    </ul>
 
-        <section id="study-plan" class="mb-16">
-            <h2 class="text-3xl font-bold text-slate-900 mb-4 text-center">Example Study Plan: Walailak University M.Sc. IT Programs</h2>
-            <p class="text-center text-slate-600 max-w-3xl mx-auto mb-8">Master's programs at Walailak University (e.g., in Computer Science, Data Science & AI) typically offer different study plans emphasizing research or a combination of coursework and research. Here's a general overview based on common structures. ✨ Click "Clarify" for explanations!</p>
-            
-            <div class="bg-white p-6 rounded-lg shadow-md mb-8">
-                <h3 class="font-bold text-xl text-slate-900 mb-3">Master of Science Program Structure (e.g., Data Science and AI)</h3>
-                <p class="text-slate-700 mb-3">The program generally requires a total of 36 credits, typically completed over 2 years (4 semesters). It usually offers two main types:</p>
+                    <h4 class="font-semibold text-lg text-slate-800 mb-2">
+                        Type A2: Coursework and Research (36 Credits: e.g., 9 Credits Coursework + 27 Credits Thesis/Independent Study)
+                        <span class="llm-trigger text-sm" data-section-id="type-a2">Clarify ✨</span>
+                    </h4>
+                    <div id="type-a2-response" class="llm-response hidden"></div>
+                    <ul class="list-disc list-inside text-slate-700 mb-3">
+                        <li>Focus: Balances theoretical knowledge through coursework with practical research experience.</li>
+                        <li>Core Components:
+                            <ul class="list-circle list-inside ml-5">
+                                <li>Seminar I & II (Non-credit)</li>
+                                <li>Core Courses (e.g., 9-12 credits)</li>
+                                <li>Thesis or Independent Study (Remaining credits)</li>
+                            </ul>
+                        </li>
+                        <li>Example Core/Elective Course Areas:
+                            <span class="llm-trigger text-sm" data-section-id="course-areas">Clarify ✨</span>
+                            <div id="course-areas-response" class="llm-response hidden"></div>
+                            <ul class="list-circle list-inside ml-5">
+                                <li>Research Methodology</li>
+                                <li>Statistical Data Analytics</li>
+                                <li>Scientific Writing</li>
+                                <li>Data Modeling and Management</li>
+                                <li>Machine Learning</li>
+                                <li>Artificial Intelligence: Natural Language Understanding</li>
+                                <li>Advanced Topics in Data Science and AI</li>
+                            </ul>
+                        </li>
+                        <li>Graduation Requirement: Typically includes coursework completion and publication of at least one research paper (or equivalent) in an international academic journal.</li>
+                    </ul>
+                    <p class="text-sm text-slate-500 mt-4">This is a generalized structure. Specific course offerings and credit distribution may vary slightly by program and academic year. Always consult the official curriculum of your chosen program on the university website.</p>
+                </div>
+            </section>
 
-                <h4 class="font-semibold text-lg text-slate-800 mb-2">
-                    Type A1: Research-Only (36 Credits Thesis) 
-                    <span class="llm-trigger text-sm" data-section-id="type-a1">Clarify ✨</span>
-                </h4>
-                <div id="type-a1-response" class="llm-response hidden"></div>
-                <ul class="list-disc list-inside text-slate-700 mb-3">
-                    <li>Focus: Pure research, suitable for students aiming for a Ph.D. or research-intensive careers.</li>
-                    <li>Core Components:
-                        <ul class="list-circle list-inside ml-5">
-                            <li>Seminar I & II (Non-credit)</li>
-                            <li>Thesis (36 Credits)</li>
-                        </ul>
-                    </li>
-                    <li>Graduation Requirement: Publication of at least one research paper at an international standard (e.g., in a Scopus-indexed journal).</li>
-                </ul>
-
-                <h4 class="font-semibold text-lg text-slate-800 mb-2">
-                    Type A2: Coursework and Research (36 Credits: e.g., 9 Credits Coursework + 27 Credits Thesis/Independent Study)
-                    <span class="llm-trigger text-sm" data-section-id="type-a2">Clarify ✨</span>
-                </h4>
-                <div id="type-a2-response" class="llm-response hidden"></div>
-                <ul class="list-disc list-inside text-slate-700 mb-3">
-                    <li>Focus: Balances theoretical knowledge through coursework with practical research experience.</li>
-                    <li>Core Components:
-                        <ul class="list-circle list-inside ml-5">
-                            <li>Seminar I & II (Non-credit)</li>
-                            <li>Core Courses (e.g., 9-12 credits)</li>
-                            <li>Thesis or Independent Study (Remaining credits)</li>
-                        </ul>
-                    </li>
-                    <li>Example Core/Elective Course Areas:
-                        <span class="llm-trigger text-sm" data-section-id="course-areas">Clarify ✨</span>
-                        <div id="course-areas-response" class="llm-response hidden"></div>
-                        <ul class="list-circle list-inside ml-5">
-                            <li>Research Methodology</li>
-                            <li>Statistical Data Analytics</li>
-                            <li>Scientific Writing</li>
-                            <li>Data Modeling and Management</li>
-                            <li>Machine Learning</li>
-                            <li>Artificial Intelligence: Natural Language Understanding</li>
-                            <li>Advanced Topics in Data Science and AI</li>
-                        </ul>
-                    </li>
-                    <li>Graduation Requirement: Typically includes coursework completion and publication of at least one research paper (or equivalent) in an international academic journal.</li>
-                </ul>
-                <p class="text-sm text-slate-500 mt-4">This is a generalized structure. Specific course offerings and credit distribution may vary slightly by program and academic year. Always consult the official curriculum of your chosen program on the university website.</p>
-            </div>
-        </section>
-
-        <section id="admissions" class="mb-16">
-            <h2 class="text-3xl font-bold text-slate-900 mb-6 text-center">General Masters Admissions Process in Thailand</h2>
-             <p class="text-center text-slate-600 max-w-3xl mx-auto mb-8">While specific requirements vary by university and program, here's a typical flow for applying to a Master's degree in Thailand. Always check the university's official graduate school website.</p>
-            <div class="grid grid-cols-1 md:grid-cols-5 gap-y-8 md:gap-x-12">
-                <div class="flowchart-step bg-white p-4 rounded-lg shadow-md flowchart-arrow">1. Research Programs & Universities</div>
-                <div class="flowchart-step bg-white p-4 rounded-lg shadow-md flowchart-arrow">2. Prepare Required Documents</div>
-                <div class="flowchart-step bg-white p-4 rounded-lg shadow-md flowchart-arrow">3. Submit Online Application</div>
-                <div class="flowchart-step bg-white p-4 rounded-lg shadow-md flowchart-arrow">4. Attend Interview (if required)</div>
-                <div class="flowchart-step bg-white p-4 rounded-lg shadow-md">5. Receive Offer & Enroll</div>
-            </div>
-            <div class="mt-10 bg-white p-6 rounded-lg shadow-md">
-                <h3 class="text-xl font-bold text-slate-900 mb-4">Typical Required Documents:</h3>
-                <ul class="list-disc list-inside text-slate-700">
-                    <li>Bachelor's Degree Certificate & Transcripts (official, translated)</li>
-                    <li>English Proficiency Test Scores (TOEFL/IELTS, if applicable)</li>
-                    <li>Statement of Purpose/Personal Statement</li>
-                    <li>Two Letters of Recommendation</li>
-                    <li>Resume/CV</li>
-                    <li>Copy of Passport</li>
-                    <li>Application Fee Payment Receipt</li>
-                </ul>
-                <p class="text-sm text-slate-500 mt-4">Always verify the exact document list on the university's graduate school website for your chosen program.</p>
-            </div>
-        </section>
-
+            <section id="admissions" class="mb-16">
+                <h2 class="text-3xl font-bold text-slate-900 mb-6 text-center">General Masters Admissions Process in Thailand</h2>
+                 <p class="text-center text-slate-600 max-w-3xl mx-auto mb-8">While specific requirements vary by university and program, here's a typical flow for applying to a Master's degree in Thailand. Always check the university's official graduate school website.</p>
+                <div class="grid grid-cols-1 md:grid-cols-5 gap-y-8 md:gap-x-12">
+                    <div class="flowchart-step bg-white p-4 rounded-lg shadow-md flowchart-arrow">1. Research Programs & Universities</div>
+                    <div class="flowchart-step bg-white p-4 rounded-lg shadow-md flowchart-arrow">2. Prepare Required Documents</div>
+                    <div class="flowchart-step bg-white p-4 rounded-lg shadow-md flowchart-arrow">3. Submit Online Application</div>
+                    <div class="flowchart-step bg-white p-4 rounded-lg shadow-md flowchart-arrow">4. Attend Interview (if required)</div>
+                    <div class="flowchart-step bg-white p-4 rounded-lg shadow-md">5. Receive Offer & Enroll</div>
+                </div>
+                <div class="mt-10 bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-xl font-bold text-slate-900 mb-4">Typical Required Documents:</h3>
+                    <ul class="list-disc list-inside text-slate-700">
+                        <li>Bachelor's Degree Certificate & Transcripts (official, translated)</li>
+                        <li>English Proficiency Test Scores (TOEFL/IELTS, if applicable)</li>
+                        <li>Statement of Purpose/Personal Statement</li>
+                        <li>Two Letters of Recommendation</li>
+                        <li>Resume/CV</li>
+                        <li>Copy of Passport</li>
+                        <li>Application Fee Payment Receipt</li>
+                    </ul>
+                    <p class="text-sm text-slate-500 mt-4">Always verify the exact document list on the university's graduate school website for your chosen program.</p>
+                </div>
+            </section>
+        </div>
     </main>
     
     <footer class="bg-white mt-16 py-8 border-t">
@@ -282,8 +380,174 @@
         </div>
     </footer>
 
-    <script>
+    <!-- Place all scripts here, just before the closing </body> tag -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics.js";
+
+        // Your web app's Firebase configuration - DO NOT CHANGE THESE VALUES
+        const firebaseConfig = {
+            apiKey: "AIzaSyAV6d-joeaVvfv-LU3my3UCz7JxblQ1yXk",
+            authDomain: "it-scholarship-436d1.firebaseapp.com",
+            projectId: "it-scholarship-436d1",
+            storageBucket: "it-scholarship-436d1.firebasestorage.app",
+            messagingSenderId: "612771636826",
+            appId: "1:612771636826:web:a3e6a7782edbb26cf71a63",
+            measurementId: "G-VRE6HKC0WG"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const googleProvider = new GoogleAuthProvider();
+        const analytics = getAnalytics(app);
+
+        // Auth State Listener (can be outside DOMContentLoaded as it listens for global auth state)
+        onAuthStateChanged(auth, (user) => {
+            const userInfoDisplay = document.getElementById('user-info');
+            const openLoginBtn = document.getElementById('open-login-btn');
+            const logoutBtn = document.getElementById('logout-btn');
+            const protectedContent = document.getElementById('protected-content');
+            const unauthenticatedMessage = document.getElementById('unauthenticated-message');
+
+            if (user) {
+                // User is signed in
+                if (userInfoDisplay) userInfoDisplay.textContent = `Logged in as: ${user.email || user.displayName}`;
+                if (openLoginBtn) openLoginBtn.classList.add('hidden');
+                if (logoutBtn) logoutBtn.classList.remove('hidden');
+                if (protectedContent) protectedContent.classList.remove('hidden');
+                if (unauthenticatedMessage) unauthenticatedMessage.classList.add('hidden');
+            } else {
+                // User is signed out
+                if (userInfoDisplay) userInfoDisplay.textContent = 'Not logged in';
+                if (openLoginBtn) openLoginBtn.classList.remove('hidden');
+                if (logoutBtn) logoutBtn.classList.add('hidden');
+                if (protectedContent) protectedContent.classList.add('hidden'); // Hide protected content
+                if (unauthenticatedMessage) unauthenticatedMessage.classList.remove('hidden'); // Show message
+            }
+        });
+
         document.addEventListener('DOMContentLoaded', () => {
+            // UI Elements for Auth (now safely inside DOMContentLoaded)
+            const loginModal = document.getElementById('login-modal');
+            const openLoginBtn = document.getElementById('open-login-btn');
+            const closeLoginBtn = document.getElementById('close-login-btn');
+            const loginForm = document.getElementById('login-form');
+            const signupForm = document.getElementById('signup-form');
+            const switchFormLink = document.getElementById('switch-form-link');
+            const logoutBtn = document.getElementById('logout-btn'); // Re-select here for listener
+            const userInfoDisplay = document.getElementById('user-info'); // Re-select here for DOM access within DOMContentLoaded
+            const protectedContent = document.getElementById('protected-content'); // Re-select here
+            const unauthenticatedMessage = document.getElementById('unauthenticated-message'); // Re-select here
+            const googleLoginBtn = document.getElementById('google-login-btn');
+            const googleSignupBtn = document.getElementById('google-signup-btn');
+
+
+            // Handle form switching
+            if (switchFormLink && loginForm && signupForm) {
+                switchFormLink.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    if (loginForm.classList.contains('hidden')) {
+                        loginForm.classList.remove('hidden');
+                        signupForm.classList.add('hidden');
+                        switchFormLink.textContent = 'Need an account? Sign Up';
+                    } else {
+                        loginForm.classList.add('hidden');
+                        signupForm.classList.remove('hidden');
+                        switchFormLink.textContent = 'Already have an account? Login';
+                    }
+                });
+            }
+
+
+            // Open/Close Modal
+            if (openLoginBtn && loginModal) {
+                openLoginBtn.addEventListener('click', () => {
+                    loginModal.classList.remove('hidden');
+                });
+            }
+            if (closeLoginBtn && loginModal) {
+                closeLoginBtn.addEventListener('click', () => {
+                    loginModal.classList.add('hidden');
+                });
+            }
+
+
+            // Email/Password Login
+            if (loginForm) {
+                loginForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const email = loginForm.email.value;
+                    const password = loginForm.password.value;
+                    try {
+                        await signInWithEmailAndPassword(auth, email, password);
+                        if (loginModal) loginModal.classList.add('hidden');
+                    } catch (error) {
+                        alert(`Login Failed: ${error.message}`);
+                        console.error("Login Error:", error);
+                    }
+                });
+            }
+
+
+            // Email/Password Signup
+            if (signupForm) {
+                signupForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const email = signupForm.email.value;
+                    const password = signupForm.password.value;
+                    try {
+                        await createUserWithEmailAndPassword(auth, email, password);
+                        if (loginModal) loginModal.classList.add('hidden');
+                    } catch (error) {
+                        alert(`Signup Failed: ${error.message}`);
+                        console.error("Signup Error:", error);
+                    }
+                });
+            }
+
+
+            // Google Sign-in for Login Form
+            if (googleLoginBtn && loginModal) {
+                googleLoginBtn.addEventListener('click', async () => {
+                    try {
+                        await signInWithPopup(auth, googleProvider);
+                        loginModal.classList.add('hidden');
+                    } catch (error) {
+                        alert(`Google Login Failed: ${error.message}`);
+                        console.error("Google Login Error:", error);
+                    }
+                });
+            }
+
+            // Google Sign-in for Signup Form (same logic as login, just for consistency in UI)
+            if (googleSignupBtn && loginModal) {
+                googleSignupBtn.addEventListener('click', async () => {
+                    try {
+                        await signInWithPopup(auth, googleProvider);
+                        loginModal.classList.add('hidden');
+                    } catch (error) {
+                        alert(`Google Sign-up Failed: ${error.message}`);
+                        console.error("Google Sign-up Error:", error);
+                    }
+                });
+            }
+
+
+            // Logout
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', async () => {
+                    try {
+                        await signOut(auth);
+                    } catch (error) {
+                        alert(`Logout Failed: ${error.message}`);
+                        console.error("Logout Error:", error);
+                    }
+                });
+            }
+
+            // --- Dashboard Specific Logic ---
             const FONT_COLOR = '#334155';
             const GRID_COLOR = '#E2E8F0';
             const PALETTE = {
@@ -371,6 +635,8 @@
             const filterContainerPrograms = document.getElementById('filter-container-programs');
 
             const renderPrograms = (filter = 'all') => {
+                if (!programsGrid) return; // Add null check for programsGrid
+
                 programsGrid.innerHTML = '';
                 const filteredData = programsData.filter(item => {
                     if (filter === 'all') return true;
@@ -425,18 +691,20 @@
                 });
             };
 
-            filterContainerPrograms.addEventListener('click', (e) => {
-                if (e.target.tagName === 'BUTTON') {
-                    const filter = e.target.dataset.filter;
-                    document.querySelectorAll('.program-filter-btn').forEach(btn => {
-                        btn.classList.remove('bg-slate-800', 'text-white');
-                        btn.classList.add('bg-white', 'text-slate-700', 'border', 'border-slate-300');
-                    });
-                    e.target.classList.add('bg-slate-800', 'text-white');
-                    e.target.classList.remove('bg-white', 'text-slate-700', 'border', 'border-slate-300');
-                    renderPrograms(filter);
-                }
-            });
+            if (filterContainerPrograms) { // Null check for filterContainerPrograms
+                filterContainerPrograms.addEventListener('click', (e) => {
+                    if (e.target.tagName === 'BUTTON') {
+                        const filter = e.target.dataset.filter;
+                        document.querySelectorAll('.program-filter-btn').forEach(btn => {
+                            btn.classList.remove('bg-slate-800', 'text-white');
+                            btn.classList.add('bg-white', 'text-slate-700', 'border', 'border-slate-300');
+                        });
+                        e.target.classList.add('bg-slate-800', 'text-white');
+                        e.target.classList.remove('bg-white', 'text-slate-700', 'border', 'border-slate-300');
+                        renderPrograms(filter);
+                    }
+                });
+            }
 
             renderPrograms(); // Initial render of programs
             
@@ -447,46 +715,56 @@
                 return label;
             };
 
-            const specializationCtx = document.getElementById('specializationChart').getContext('2d');
-            new Chart(specializationCtx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['AI & Data Science', 'Software Engineering', 'Cybersecurity', 'Information Systems'],
-                    datasets: [{
-                        label: 'Program Distribution',
-                        data: [40, 30, 15, 15],
-                        backgroundColor: [PALETTE.primary, PALETTE.secondary, PALETTE.accent1, '#CBD5E0'],
-                        borderColor: '#f8fafc',
-                        borderWidth: 4,
-                        hoverOffset: 4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { position: 'bottom', labels: { color: FONT_COLOR, font: { family: "'Inter', sans-serif" } } },
-                        tooltip: { 
-                            callbacks: { title: tooltipTitleCallback },
-                            backgroundColor: '#334155',
-                            titleFont: { size: 14 },
-                            bodyFont: { size: 12 },
-                            padding: 10,
-                            cornerRadius: 4
+            const specializationChartCanvas = document.getElementById('specializationChart');
+            if (specializationChartCanvas) { // Null check for specializationChartCanvas
+                const specializationCtx = specializationChartCanvas.getContext('2d');
+                new Chart(specializationCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['AI & Data Science', 'Software Engineering', 'Cybersecurity', 'Information Systems'],
+                        datasets: [{
+                            label: 'Program Distribution',
+                            data: [40, 30, 15, 15],
+                            backgroundColor: [PALETTE.primary, PALETTE.secondary, PALETTE.accent1, '#CBD5E0'],
+                            borderColor: '#f8fafc',
+                            borderWidth: 4,
+                            hoverOffset: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom', labels: { color: FONT_COLOR, font: { family: "'Inter', sans-serif" } } },
+                            tooltip: { 
+                                callbacks: { title: tooltipTitleCallback },
+                                backgroundColor: '#334155',
+                                titleFont: { size: 14 },
+                                bodyFont: { size: 12 },
+                                padding: 10,
+                                cornerRadius: 4
+                            }
                         }
                     }
-                }
-            });
+                });
+            }
 
-            const nav = document.getElementById('main-nav');
-            nav.addEventListener('click', e => {
-                if (e.target.tagName === 'BUTTON') {
-                    const targetId = e.target.dataset.target;
-                    document.getElementById(targetId).scrollIntoView({ behavior: 'smooth' });
-                    document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
-                    e.target.classList.add('active');
-                }
-            });
+
+            const navElement = document.querySelector('header nav');
+            if (navElement) { // Null check for navElement
+                const navButtons = navElement.querySelectorAll('button');
+                navElement.addEventListener('click', e => {
+                    if (e.target.tagName === 'BUTTON' && e.target.dataset.target) {
+                        const targetId = e.target.dataset.target;
+                        const targetElement = document.getElementById(targetId);
+                        if (targetElement) {
+                            targetElement.scrollIntoView({ behavior: 'smooth' });
+                        }
+                        navButtons.forEach(btn => btn.classList.remove('active'));
+                        e.target.classList.add('active');
+                    }
+                });
+            }
 
             // Hardcoded Study Plan Clarification
             document.querySelectorAll('.llm-trigger').forEach(trigger => {
@@ -495,13 +773,15 @@
                     const displayElementId = `${sectionId}-response`;
                     const displayElement = document.getElementById(displayElementId);
 
-                    if (displayElement.classList.contains('hidden') || displayElement.innerHTML.trim() === '') {
-                        const content = hardcodedStudyPlanDetails[sectionId];
-                        displayElement.innerHTML = content;
-                        displayElement.classList.remove('hidden');
-                    } else {
-                        displayElement.classList.add('hidden');
-                        displayElement.innerHTML = ''; // Clear content when hidden
+                    if (displayElement) { // Null check for displayElement
+                        if (displayElement.classList.contains('hidden') || displayElement.innerHTML.trim() === '') {
+                            const content = hardcodedStudyPlanDetails[sectionId];
+                            displayElement.innerHTML = content;
+                            displayElement.classList.remove('hidden');
+                        } else {
+                            displayElement.classList.add('hidden');
+                            displayElement.innerHTML = ''; // Clear content when hidden
+                        }
                     }
                 });
             });
